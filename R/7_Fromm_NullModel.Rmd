@@ -1,0 +1,198 @@
+---
+title: "Null model"
+author: "Emma Fromm"
+date: "2022-11-18"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+    theme: united
+    highlight: tango
+  pdf_document:
+    toc: yes
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = TRUE, 
+                      fig.align = "center", 
+                      fig.width = 8,
+                      fig.height = 6, 
+                      message = FALSE, 
+                      warning = FALSE)
+```
+
+# Libraries
+```{r, echo=FALSE, message=FALSE}
+library(metabaR)
+library(ggplot2)
+library(questionr)
+library(dplyr) 
+library(reshape2)
+library(stringr)
+library(sfsmisc)
+```
+
+
+# Data
+
+- We used rarefied data
+- samples from 2015 (start of the experiment) are not considered.
+
+```{r, echo=TRUE}
+setwd("~/data")
+results_null <- read.csv("results_nul.csv", header = T, sep = ";", dec = ",")
+
+setwd("~/data")
+all_data <- readRDS("FrommMS1_cleandata.rds")
+
+setwd("~/R")
+source('0_Fromm_sources_functions.R', chdir = TRUE)
+```
+
+## Adding variables 
+```{r}
+add_var <- subset(all_data$samples, select = c("Climate_TM1", "Connectivity_TM1", "Year", "Mesocosm_TM1"))
+add_var$ID.seq <- rownames(add_var)
+
+add_var <- rename.variable(add_var, "ID.seq", "s1")
+results_null <- merge(results_null, add_var, by=c("s1"))
+results_null <- results_null %>% 
+  rename("Mesocosm1" = "Mesocosm_TM1",
+           "Climate1" = "Climate_TM1", 
+           "Year1" = "Year", 
+            "Connectivity1"= "Connectivity_TM1")
+
+add_var <- rename.variable(add_var, "s1", "s2")
+results_null <- merge(results_null, add_var, by=c("s2"))
+results_null <- results_null %>% 
+  rename("Mesocosm2" = "Mesocosm_TM1",
+           "Climate2" = "Climate_TM1", 
+           "Year2" = "Year", 
+           "Connectivity2" = "Connectivity_TM1")
+```
+
+## Remove comparisons
+
+We remove comparisons : 
+
+- between different years
+- between differrent mesocosms
+=> At the end we only have comparison within a mesocosm for each year
+
+```{r}
+# Years
+results_null$Compa_year <- ifelse(results_null$Year1 == results_null$Year2, 
+                                 "Similar", 
+                                 "Different")
+
+#Keep only comparisons within a year
+results_null <- subset(results_null, Compa_year=="Similar")
+
+# Mesocosm
+results_null$Compa_mesocosm <- ifelse(results_null$Mesocosm1 == results_null$Mesocosm2, 
+                                 "Similar", 
+                                 "Different")
+
+#Keep only comparisons within a mesocosm
+results_null <- subset(results_null, Compa_mesocosm=="Similar")
+
+#Lizards
+results_null$Compa_liz <- ifelse(results_null$s1 == results_null$s2, 
+                                 "intra", 
+                                 "inter")
+
+freq(results_null$Compa_liz) #only inter-individual comparisons
+```
+
+# Null distribution
+
+## Data
+```{r}
+data_null <- melt(results_null, measure.vars = c("b_obs", "b_null_mean"))
+
+data_null$connect_obs1 <- ifelse(data_null$variable=="b_obs" & data_null$Connectivity1 == "Isolated", 
+                 "Isolated",  
+                 "Null")
+
+data_null$connect_obs <- ifelse(data_null$variable=="b_obs" & data_null$Connectivity1 == "Connected", 
+                 "Connected", 
+                 data_null$connect_obs1)
+
+freq(data_null$connect_obs) #vérif
+
+data_null$temp_obs1 <- ifelse(data_null$variable=="b_obs" & data_null$Climate1 == "T28", 
+                 "Present-day", 
+                 "Null")
+
+data_null$temp_obs <- ifelse(data_null$variable=="b_obs" & data_null$Climate1 == "T38", 
+                 "Warm", 
+                 data_null$temp_obs1)
+
+
+freq(data_null$temp_obs)
+```
+
+## Function for analysis
+```{r}
+null_analysis <- function(data, x, y) {
+  data_connect = data  %>% filter(connect_obs != x)
+  data_connect_climate = data_connect %>% filter(temp_obs != y)
+  
+  data_connect_climate$Title <- str_c(data_connect_climate$connect_obs, data_connect_climate$temp_obs, sep=" ")
+  #Calculate mean ± SE
+  msd <- data_connect_climate %>% 
+         group_by(group=variable) %>% summarise(mean=mean(value), sd=sd(value))
+  msd <- rename.variable(msd, "group", "variable")
+  
+  #Plot
+  Plot <- ggplot(data_connect_climate, aes(x=value, color=variable, fill=variable)) +
+    geom_density(alpha=0.6) +
+  labs(y= "Density", x="Beta diversity") +
+  ggtitle(data_connect_climate$Title) +
+  scale_fill_manual(name = "", labels=c("Observed", "Null"), values=c("#FF9999", "#9999FF")) +
+  scale_color_manual(name = "", labels=c("Observed", "Null"), values=c("#FF9999", "#9999FF")) +
+  scale_x_continuous(limits = c(0, 1)) +
+  geom_point(data=msd, aes(y=3.5, x=mean), pch=19, size=4) +
+  geom_segment(data=msd, aes(y=3.5,yend=3.5, x=mean - sd, xend=mean + sd), size=1) + 
+  geom_segment(data= msd, aes(x=mean-sd, xend=mean-sd, y=3.6, yend=3.4), size=1) + 
+  geom_segment(data= msd, aes(x=mean+sd, xend=mean+sd, y=3.6, yend=3.4), size=1) +
+  theme_fig + 
+  theme(legend.position = c(0.1, 0.9))
+  
+  #save plot
+  setwd("~/Plots")
+  ggsave(filename = str_c("Plot_null_", data_connect_climate$Title , ".pdf"), Plot)
+  
+  #overlap calculation
+  data_obs_distrib <- subset(data_connect_climate, variable=="b_obs")
+  data_nul_distrib <- subset(data_connect_climate, variable == "b_null_mean")
+  a <- data_obs_distrib$value  ### simulate two samples
+  b <- data_nul_distrib$value
+  lower <- min(c(a, b)) - 1 ### define limits of a common grid, adding a buffer so that tails aren't cut off
+  upper <- max(c(a, b)) + 1
+  da <- density(a, from=lower, to=upper)### generate kernel densities
+  db <- density(b, from=lower, to=upper)
+  d <- data.frame(x=da$x, a=da$y, b=db$y)
+  d$w <- pmin(d$a, d$b) ### calculate intersection densities
+  total <- integrate.xy(d$x, d$a) + integrate.xy(d$x, d$b) ### integrate areas under curves
+  intersection <- integrate.xy(d$x, d$w)
+  overlap <- 2 * intersection / total ### compute overlap coefficient
+
+  return(overlap)
+}
+```
+
+## Apply
+```{r}
+#Isolated Present-day
+null_analysis(data_null, "Connected", "T38")
+
+#Isolated Warm
+null_analysis(data_null, "Connected", "T28")
+
+#Connected Present-day
+null_analysis(data_null, "Isolated", "T38")
+
+#Connected Warm
+null_analysis(data_null, "Isolated", "T28")
+```
