@@ -1,0 +1,126 @@
+---
+title: "Gut Diversity - Dispersal"
+author: "Emma Fromm"
+date: "2022-11-17"
+output:
+  pdf_document:
+    toc: yes
+    df_print : kable
+  html_document:
+    number_sections: yes
+    toc: yes
+    theme: united
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = TRUE, 
+                      fig.align = "center", 
+                      fig.width = 8,
+                      fig.height = 6, 
+                      message = FALSE, 
+                      warning = FALSE)
+```
+
+# Libraries
+```{r libraries}
+library(metabaR)
+library(ggplot2)
+library(forcats)
+library(lme4)
+library(lmerTest)
+```
+
+# Read the data and load functions
+```{r, echo=TRUE}
+setwd("~/data")
+
+all_data <- readRDS("FrommMS1_cleandata.rds")
+
+data_lizards <- all_data$samples
+
+setwd("~/R")
+source('0_Fromm_sources_functions.R', chdir = TRUE)
+```
+
+# Data 
+
+To study dispersal, we only worked on lizard from connected mesocosms. Dispersal mostly occurs during the first year of life (Le Galliard et al. 2003), but juveniles cannot be sampled for their gut microbiota at birth because of their small size. To include juveniles in the analysis, we studied the relationship between the dispersal status from year t to year t+1 and gut microbiota diversity at year t+1.
+
+```{r}
+data_lizards_connected <- subset(data_lizards, Connectivity_TM1 == "Connected")
+data_lizards_connected <- subset(data_lizards_connected, Year != "2015")
+```
+
+# Plot 
+<!--new variable to assign the right colors --> 
+```{r, echo=FALSE}
+data_lizards_connected$Clim_disp1 <- ifelse(data_lizards_connected$Climate_TM1 == "T28" & data_lizards_connected$Annual_dispersal_TM1 == "0", 
+                                                 "Present_Resident", 
+                                                 NA)
+
+data_lizards_connected$Clim_disp2 <- ifelse(data_lizards_connected$Climate_TM1 == "T28" & data_lizards_connected$Annual_dispersal_TM1 == "1", 
+                                                 "Present_Dispersers", 
+                                                 data_lizards_connected$Clim_disp1)
+
+data_lizards_connected$Clim_disp3 <- ifelse(data_lizards_connected$Climate_TM1 == "T38" & data_lizards_connected$Annual_dispersal_TM1 == "0", 
+                                                 "Warm_Resident", 
+                                                 data_lizards_connected$Clim_disp2)
+
+data_lizards_connected$Clim_disp <- ifelse(data_lizards_connected$Climate_TM1 == "T38" & data_lizards_connected$Annual_dispersal_TM1 == "1", 
+                                                 "Warm_Dispersers", 
+                                                 data_lizards_connected$Clim_disp3)
+
+
+data_lizards_connected$Clim_disp <- fct_relevel(data_lizards_connected$Clim_disp, c("Present_Resident", "Present_Dispersers", "Warm_Resident", "Warm_Dispersers"))
+
+levels(data_lizards_connected$Clim_disp)
+```
+
+```{r}
+Plot_Dispersal <- ggplot(data_lizards_connected, aes(x=Climate_TM1, y=q1, fill=Clim_disp)) + 
+  geom_boxplot(outlier.shape = NA, alpha=0.5) +
+  geom_point(aes(color=Clim_disp), 
+             position = position_jitterdodge(), 
+             alpha=0.35) + 
+  labs(x="Climate before dispersal decision", y="exp(H)") +
+  scale_fill_manual(values = c("#006699", "#990066", "#CC0000", "#990066")) +
+  scale_color_manual(values = c("#006699", "#990066", "#CC0000", "#990066")) + 
+  scale_x_discrete(labels = c("Present-day", "Warm")) +
+  theme_fig
+
+Plot_Dispersal
+```
+
+<!-- Save plot --> 
+```{r, eval=FALSE}
+setwd("~/Plots")
+ggsave("Plot_Dispersal.pdf", Plot_Dispersal, width = 8, height = 5)
+```
+# Model 
+<!--Centered years --> 
+```{r}
+data_lizards_connected$year2 <- ifelse(data_lizards_connected$Year =="2017", 
+                            1, 
+                            0)
+
+
+data_lizards_connected$year3 <- ifelse(data_lizards_connected$Year =="2018", 
+                            1, 
+                            0)
+# apply it
+data_lizards_connected$year2c <- data_lizards_connected$year2 - mean(data_lizards_connected$year2)
+data_lizards_connected$year3c <- data_lizards_connected$year3 - mean(data_lizards_connected$year3)
+```
+
+<!--Run model --> 
+```{r}
+mod_dispersal <- lmer(q1 ~ Annual_dispersal_TM1*year2c + Annual_dispersal_TM1*year3c + Annual_dispersal_TM1*Climate_TM1 + Climate_TM1*year2c + Climate_TM1*year3c + Age_class + Sex + SVL + (1|Mesocosm_TM1) + (1|Code), data = data_lizards_connected) 
+
+dredge_function(mod_dispersal)
+relative_importance(mod_dispersal)
+
+r.squaredGLMM(mod_dispersal)
+```
+
