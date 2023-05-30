@@ -1,0 +1,347 @@
+---
+title: 'Gut Diversity'
+author: "Emma Fromm"
+date: '2023-05-30'
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+    theme: united
+    highlight: tango
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = TRUE, 
+                      fig.align = "center", 
+                      fig.width = 8,
+                      fig.height = 6, 
+                      message = FALSE, 
+                      warning = FALSE)
+```
+
+# Libraries
+```{r libraries}
+library(metabaR)
+library(ggplot2)
+library(vegan)
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(dplyr)
+library(reshape)
+library(reshape2)
+library(purrr)
+```
+
+# Read the data and load functions
+```{r, echo=TRUE}
+setwd("~/data")
+
+all_data <- readRDS("FrommMS1_cleandata.rds")
+
+data_lizards <- all_data$samples
+
+setwd("~/R")
+source('0_Fromm_sources_functions.R', chdir = TRUE)
+```
+
+# Rarefaction curves 
+
+```{r}
+# run rarefaction (use boot = 20 to limit computation time)
+all_data.raref <- hill_rarefaction(all_data, nboot = 20, nsteps = 10)
+
+gghill_rarefaction(
+         all_data.raref,
+         group = mblist_Emma$samples$Climate_TM1[match(all_data$pcrs$sample_id,
+                                               rownames(all_data$samples))]) +
+  labs(color = "Traitement", x = "Reads") + 
+  scale_fill_manual(values = c("#006699", "#CC0000")) +
+  scale_color_manual(values = c("#006699", "#CC0000"), labels=c("Present-day", "Warm")) +
+  theme_fig + 
+  theme(legend.position = "bottom",
+        legend.title = element_text(size = 0), 
+        legend.text = element_text(size=14), 
+        axis.text.x = element_text(size=12))
+```
+
+# 1 : Alpha diversity [exp(H)]
+
+## Plot
+
+```{r, echo=FALSE, fig.align='center'}
+graphShannon_global <- ggplot(data_lizards, mapping = aes(x = Climate_TM1, y = q1, fill=Climate_TM1)) +
+  geom_boxplot(outlier.shape = NA, alpha=0.5) +
+  geom_point(aes(color=Climate_TM1), 
+             position = position_jitterdodge(), 
+             alpha=0.35)+
+  facet_grid(cols =  vars(Year), rows = vars(Connectivity_TM1)) + 
+  labs(y="exp(H)", x = "") +
+  scale_x_discrete(labels = c("Present-day", "Warm")) +
+  scale_fill_manual(name = "Climatic treatment", labels = c("Present-day", "Warm"), values=c("#006699", "#CC0000")) + 
+  scale_color_manual(values=c("#006699", "#CC0000")) + 
+  theme_fig 
+
+graphShannon_global
+```
+
+```{r, eval=FALSE}
+#to save
+setwd("~/Plots")
+ggsave("graphShannon_global.pdf", graphShannon_global, width = 8, height = 5)
+```
+
+## Initial conditions (year0)
+
+```{r, echo=FALSE}
+data_2015 <- subset(data_lizards, Year=="2015") #Data frame including only lizards year0 (=2015)
+data_2015$Mesocosm_TM1 <- as.factor(data_2015$Mesocosm_TM1)
+```
+
+### Model year0
+```{r, message=FALSE, echo=TRUE}
+mod_2015 <- lmer("q1 ~ Climate_TM1*Connectivity_TM1 + Age_class + Sex + SVL + (1|Mesocosm_TM1)", data = data_2015)
+
+dredge_function(mod_2015)
+relative_importance(mod_2015)
+
+r.squaredGLMM(mod_2015)
+
+#pairwise t-test
+means_2015 = emmeans(mod_2015,~Climate_TM1*Connectivity_TM1) 
+contrast(means_2015, method = "pairwise", adjust = "bonferroni", by=c("Connectivity_TM1"))
+
+#validity requirements 
+plot(mod_2015)
+qqnorm(residuals(mod_2015))
+```
+
+## Full model : isolated and connected mesocosms
+
+```{r, echo=FALSE}
+#data
+data_wo_2015 = data_lizards  %>%
+  filter(Year != "2015")
+
+data_wo_2015$Mesocosms_TM1<- as.factor(data_wo_2015$Mesocosm_TM1)
+```
+
+### Plot
+```{r}
+graphShannon <- ggplot(data_wo_2015, mapping = aes(x = Climate_TM1, y = q1, fill=Climate_TM1)) +
+  geom_boxplot(outlier.shape = NA, alpha=0.5) +
+  geom_point(aes(color=Climate_TM1), 
+             position = position_jitterdodge(), 
+             alpha=0.35)+
+  facet_grid(cols =  vars(Year), rows = vars(Connectivity_TM1)) + 
+  labs(y="exp(H)", x = "") +
+  scale_x_discrete(labels = c("Present-day", "Warm")) +
+  scale_fill_manual(name = "Climatic treatment", labels = c("Present-day", "Warm"), values=c("#006699", "#CC0000")) + 
+  scale_color_manual(values=c("#006699", "#CC0000")) + 
+  theme_fig 
+
+graphShannon
+```
+
+```{r, eval=FALSE}
+#Save plot
+setwd("~/Plots")
+ggsave("graphShannon.pdf", graphShannon, width = 8, height = 5)
+```
+
+### Run model
+
+We recode and center the year factor (Schielzeth et al. 2010). 
+```{r, echo=FALSE}
+data_wo_2015$year2 <- ifelse(data_wo_2015$Year =="2017", 
+                            1, 
+                            0)
+
+
+data_wo_2015$year3 <- ifelse(data_wo_2015$Year =="2018", 
+                            1, 
+                            0)
+
+
+data_wo_2015$year2_c <- data_wo_2015$year2 - mean(data_wo_2015$year2)
+data_wo_2015$year3_c <- data_wo_2015$year3 - mean(data_wo_2015$year3)
+```
+
+```{r, echo=TRUE}
+mod_wo_2015 <- lmer("q1 ~ year2_c*Climate_TM1*Connectivity_TM1 + year3_c*Climate_TM1*Connectivity_TM1 + Age_class + Sex + SVL + (1|Mesocosm_TM1) + (1|Code)", data = data_wo_2015)
+
+dredge_function(mod_wo_2015)
+relative_importance(mod_wo_2015)
+
+r.squaredGLMM(mod_wo_2015)
+```
+
+## Model in isolated mesocosms
+
+```{r, echo=FALSE}
+#data
+data_wo2015_isolated = data_wo_2015 %>%
+  filter(Connectivity_TM1 != "Connected")
+
+summary(data_wo2015_isolated$Year)
+data_wo2015_isolated$Year <- as.factor(data_wo2015_isolated$Year)
+
+#center years
+data_wo2015_isolated$year2 <- ifelse(data_wo2015_isolated$Year =="2017", 
+                            1, 
+                            0)
+
+
+data_wo2015_isolated$year3 <- ifelse(data_wo2015_isolated$Year =="2018", 
+                            1, 
+                            0)
+
+
+data_wo2015_isolated$year2_c <- data_wo2015_isolated$year2 - mean(data_wo2015_isolated$year2)
+data_wo2015_isolated$year3_c <- data_wo2015_isolated$year3 - mean(data_wo2015_isolated$year3)
+```
+
+```{r, echo=TRUE}
+mod_wo2015_isolated <- lmer("q1 ~  year2_c*Climate_TM1 + year3_c*Climate_TM1 + Age_class + Sex + SVL + (1|Mesocosm_TM1) + (1|Code)", data = data_wo2015_isolated)
+
+dredge_function(mod_wo2015_isolated)
+relative_importance(mod_wo2015_isolated)
+
+r.squaredGLMM(mod_wo2015_isolated)
+```
+
+## Model in connected mesocosms
+
+```{r, echo=FALSE}
+#data
+data_connected_wo2015 <- subset(data_wo_2015, Connectivity_TM1 == "Connected")
+
+#center years
+data_connected_wo2015$year2 <- ifelse(data_connected_wo2015$Year =="2017", 
+                            1, 
+                            0)
+
+
+data_connected_wo2015$year3 <- ifelse(data_connected_wo2015$Year =="2018", 
+                            1, 
+                            0)
+
+
+data_connected_wo2015$year2_c <- data_connected_wo2015$year2 - mean(data_connected_wo2015$year2)
+data_connected_wo2015$year3_c <- data_connected_wo2015$year3 - mean(data_connected_wo2015$year3)
+```
+
+```{r}
+mod_connected_wo2015 <- lmer("q1 ~year2_c*Climate_TM1 + year3_c*Climate_TM1 + Age_class + Sex + SVL + (1|Mesocosm_TM1) + (1|Code)", data = data_connected_wo2015)
+
+dredge_function(mod_connected_wo2015)
+relative_importance(mod_connected_wo2015)
+
+r.squaredGLMM(mod_connected_wo2015)
+```
+
+
+# 2 : Alpha diversity within major phyla
+
+We run repeated-measure mixed models. 
+
+## Data
+```{r}
+valeurs <- melt(data_lizards, id= c("Climate_TM1", "Code", "Year", "Connectivity_TM1", "Mesocosm_TM1", "Age_class", "Sex", "SVL"), measure.vars = c("q1_firmi", "q1_bactero", "q1_actino", "q1_fuso", "q1_alphapro", "q1_deltapro", "q1_gammapro"))
+
+valeurs$phylum_firmi <- ifelse(valeurs$variable=="q1_firmi", 
+                            "Firmicutes", 
+                            NA)
+valeurs$phylum_bactero <- ifelse(valeurs$variable=="q1_bactero", 
+                            "Bacteroidetes", 
+                            valeurs$phylum_firmi)
+valeurs$phylum_actino <- ifelse(valeurs$variable=="q1_actino", 
+                            "Actinobacteria", 
+                            valeurs$phylum_bactero)
+valeurs$phylum_fuso <- ifelse(valeurs$variable=="q1_fuso", 
+                            "Fusobacteria", 
+                            valeurs$phylum_actino)
+valeurs$phylum_alphapro <- ifelse(valeurs$variable=="q1_alphapro", 
+                            "Alphaproteobacteria", 
+                            valeurs$phylum_fuso)
+valeurs$phylum_deltapro <- ifelse(valeurs$variable=="q1_deltapro", 
+                            "Deltaproteobacteria", 
+                            valeurs$phylum_alphapro)
+valeurs$phylum <- ifelse(valeurs$variable=="q1_gammapro", 
+                            "Gammaproteobacteria", 
+                            valeurs$phylum_deltapro)
+
+valeurs_div <- subset(valeurs, select = c("Climate_TM1", "Connectivity_TM1", "Code", "Year", "variable", "value", "phylum", "Mesocosm_TM1", "Age_class", "Sex", "SVL"))
+
+# Create a list
+valeurs_div$Year <- as.character(valeurs_div$Year)
+list_valeursPhylum <- split(valeurs_div, valeurs_div$phylum)
+names(list_valeursPhylum) <- c("A. Actinobacteria", "B. Alphaproteobacteria", "C. Bacteroidetes", "D. Deltaproteobacteria", "E. Firmicutes", "Fusobacteria", "F. Gammaproteobacteria")
+```
+
+## Plots by phylum 
+
+```{r}
+#Define plot
+Plot_phylum <- function(x) {ggplot(list_valeursPhylum[[x]], mapping = aes(x = Year, y = value, fill = Climate_TM1)) + 
+    geom_boxplot(outlier.shape = NA, alpha=0.5) + 
+    geom_point(aes(color=Climate_TM1), 
+             position = position_jitterdodge(), 
+             alpha=0.35)+
+  facet_grid(cols = vars(Connectivity_TM1)) +
+  labs(x="", y="exp(H)") + 
+  ggtitle(names(list_valeursPhylum)[x]) + 
+  scale_fill_manual(values=c("#006699", "#CC0000"), name="Climatic condition", labels=c("Present", "Warm")) +
+  scale_color_manual(values=c("#006699", "#CC0000")) +
+  theme_fig_by_phylum}
+
+Plots_out <- lapply(seq_along(list_valeursPhylum), Plot_phylum)
+names(Plots_out) <- c("Div_Actino", "Div_Alphapro", "Div_Bactero", "Div_Deltapro", "Div_Firmi", "Div_Fuso", "Div_Gamma")
+```
+
+```{r, eval=FALSE}
+#save plots
+setwd("~/Plots")
+iwalk(Plots_out, ~ ggsave(glue::glue("{.y}.png"), .x, device = "png"))
+```
+
+## Models 
+```{r}
+#data without year0
+valeurs_wo2015 <- subset(valeurs_div, Year != "2015")
+```
+
+### Isolated mesocosms
+```{r}
+valeurs_isolated <- subset(valeurs_wo2015, Connectivity_TM1 == "Isolated")
+
+valeurs_isolated$Climate_TM1 <- relevel(as.factor(valeurs_isolated$Climate_TM1), ref = "T38")
+
+mod_phylum_isolated <- lmer(value ~ Climate_TM1*phylum*Year + Age_class + Sex + SVL + (1|Code) + (1|Mesocosm_TM1), data = valeurs_isolated)
+
+means_phylum_isolated  <- emmeans(mod_phylum_isolated,~ Climate_TM1*phylum*Year)
+contrast(means_phylum_isolated , method="pairwise", adjust="bonferroni", by= c("phylum", "Year"))
+
+r.squaredGLMM(mod_phylum_isolated)
+```
+
+### Connected mesocosms
+```{r}
+valeurs_connected <- subset(valeurs_wo2015, Connectivity_TM1 == "Connected")
+
+valeurs_connected$Climate_TM1 <- relevel(as.factor(valeurs_connected$Climate_TM1), ref = "T38")
+
+mod_phylum_connected <- lmer(value ~ Climate_TM1*phylum*Year + Age_class + Sex +  SVL + (1|Code) + (1|Mesocosm_TM1) , data = valeurs_connected)
+
+Anova(mod_phylum_connected)
+anova(mod_phylum_connected)
+
+means_phylum_connected <- emmeans(mod_phylum_connected,~ Climate_TM1*phylum*Year)
+contrast(means_phylum_connected, method="pairwise", adjust="bonferroni", by= c("phylum", "Year"))
+
+r.squaredGLMM(mod_phylum_connected)
+```
+

@@ -1,0 +1,302 @@
+---
+title: "ANCOM_EF"
+author: "Emma Fromm"
+date: "07/11/2022"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+    theme: united
+    highlight: tango
+  pdf_document:
+    toc: yes
+---
+
+Analyses des différences d'abondances relatives entre les traitements chauds et froids pour chaque OTUs.
+
+Refs : Lin & Peddada 2020
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = TRUE, 
+                      fig.align = "center", 
+                      fig.width = 8,
+                      fig.height = 6, 
+                      message = FALSE, 
+                      warning = FALSE)
+```
+
+# Libraries
+```{r libraries}
+library(metabaR)
+library(ggplot2)
+library(ANCOMBC)
+library(phyloseq)
+library(dplyr)
+library(DT)
+library(questionr)
+library(ggpubr)
+```
+
+# Read the data and load functions
+```{r}
+setwd("~/data")
+all_data <- readRDS("FrommMS1_cleandata.rds")
+
+setwd("~/R")
+source('0_Fromm_sources_functions.R', chdir = TRUE)
+
+#Define theme for figures
+theme_fig_ancom <- theme_fig + theme_bw() + (theme(plot.title = element_text(size=15, face="bold")))
+```
+
+# ANCOM 
+
+```{r}
+col_name = c("Present_Warm")
+tax_colnames <- c("superkingdom_silva", "kingdom_silva", "phylum_silva", "class_silva", "order_silva", "family_silva", "genus_silva")
+
+ANCOM_analysis <- function(data) {
+  data_agg <- aggregate_pcrs(data)
+  data_agg$pcrs$plate_no <- as.numeric(data_agg$pcrs$plate_no)
+  data_physeq <- metabarlist_to_phyloseq(data_agg, tax_colnames)
+  
+  #OTU classification
+  Tab_classification <- all_data$motus
+  Tab_classification$OTU <- rownames(Tab_classification)
+  Tab_classification <- subset(Tab_classification, select=c(OTU, superkingdom_silva, kingdom_silva, phylum_silva, class_silva, order_silva, family_silva, genus_silva, lineage_silva))
+  
+  #perform the analysis
+  out_OTU = ancombc(
+  phyloseq = data_physeq, formula="Climate_TM1",
+  p_adj_method = "holm", lib_cut = 0, 
+  group = "Climate_TM1", struc_zero = FALSE, neg_lb = TRUE, tol = 1e-5, 
+  max_iter = 100, conserve = TRUE, alpha = 0.05, global = TRUE)
+  
+  res_OTU = out_OTU$res
+  
+  #Differentially Abundant taxa
+  tab_diff_OTU = res_OTU$diff_abn
+  colnames(tab_diff_OTU) = col_name
+  tab_diff_OTU %>% 
+  datatable(caption = "Differentially Abundant Taxa")
+  tab_diff_OTU$OTU <- rownames(tab_diff_OTU)
+  
+  tab_true <- subset(tab_diff_OTU, Present_Warm == "TRUE")
+  results <- full_join(Tab_classification, tab_true, by="OTU")
+  results <- subset(results, Present_Warm == "TRUE")
+  results <- rename.variable(results, "Present_Warm", "diff_abond")
+  
+  #log fold changes
+  tab_lfc_OTU = res_OTU$beta
+  col_name = c("Present_Warm")
+  colnames(tab_lfc_OTU) = col_name
+
+  tab_lfc_OTU %>% 
+  datatable(caption = "Log Fold Changes") %>%
+  formatRound(col_name, digits = 1)
+  
+  tab_lfc_OTU$OTU <- rownames(tab_lfc_OTU)
+  results <- full_join(results, tab_lfc_OTU, by="OTU")
+  results <- rename.variable(results, "Present_Warm", "Log_Fold_Changes")
+  results <- subset(results, diff_abond != is.na(diff_abond))
+  
+  #SE
+  tab_se_OTU = res_OTU$se
+  colnames(tab_se_OTU) = col_name
+  
+  tab_se_OTU %>% 
+  datatable(caption = "SEs") %>%
+  formatRound(col_name, digits = 1)
+  
+  tab_se_OTU$OTU <- rownames(tab_se_OTU)
+  results <- full_join(results, tab_se_OTU, by="OTU")
+  results <- rename.variable(results, "Present_Warm", "SEs")
+  results <- subset(results, diff_abond != is.na(diff_abond))
+  
+  #Statistic test
+  tab_w_OTU = res_OTU$W
+  colnames(tab_w_OTU) = col_name
+  tab_w_OTU %>% 
+  datatable(caption = "Test Statistics") %>%
+  formatRound(col_name, digits = 1)
+  
+  tab_w_OTU$OTU <- rownames(tab_w_OTU)
+  results <- full_join(results, tab_w_OTU, by="OTU")
+  results <- rename.variable(results, "Present_Warm", "W")
+  results <- subset(results, diff_abond != is.na(diff_abond))
+  
+  #p-value
+  tab_p_OTU = res_OTU$p_val
+  colnames(tab_p_OTU) = col_name
+  tab_p_OTU %>% 
+  datatable(caption = "P-values") %>%
+  formatRound(col_name, digits = 1)
+  
+  tab_p_OTU$OTU <- rownames(tab_p_OTU)
+  results<- full_join(results, tab_p_OTU, by="OTU")
+  results <- rename.variable(results, "Present_Warm", "p-values")
+  results <- subset(results, diff_abond != is.na(diff_abond))
+  
+  #q-value
+  tab_q_OTU = res_OTU$q
+  colnames(tab_q_OTU) = col_name
+  tab_q_OTU %>% 
+  datatable(caption = "Adjusted p-values") %>%
+  formatRound(col_name, digits = 1)
+  
+  tab_q_OTU$OTU <- rownames(tab_q_OTU)
+  results <- full_join(results, tab_q_OTU, by="OTU")
+  results <- rename.variable(results, "Present_Warm", "q-values")
+  results <- subset(results, diff_abond != is.na(diff_abond))
+  
+  #write data
+  setwd("~/results_ANCOM")
+  write.csv2(results, paste0(deparse(substitute(data)),".csv"))
+  
+  #Log fold change distribution
+  tab_lfc_OTU = res_OTU$beta
+  colnames(tab_lfc_OTU) = col_name
+  
+  tab_lfc_OTU %>% 
+  datatable(caption = "Log Fold Changes") %>%
+  formatRound(col_name, digits = 1)
+  
+  tab_lfc_OTU$OTU <- rownames(tab_lfc_OTU)
+  tab_lfc_complet <- tab_lfc_OTU
+  tab_lfc_complet <- rename.variable(tab_lfc_complet, "Present_Warm", "Log_Fold_Changes")
+  
+  write.csv2(tab_lfc_complet, paste0(deparse(substitute(data)),"_table_lfc.csv"))
+} 
+
+```
+
+# Isolated mesocosms
+
+## Data
+```{r}
+all_data_isolated <- subset_metabarlist(all_data, "samples", all_data$samples$Connectivity_TM1 == "Isolated")
+```
+
+## year1
+
+### ANCOM
+```{r}
+all_data_isolated_year1 <- subset_metabarlist(all_data_isolated, "samples", all_data_isolated$samples$Year == "2016")
+
+ANCOM_analysis(all_data_isolated_year1)
+```
+
+## Year2
+
+### ANCOM
+```{r}
+all_data_isolated_year2 <- subset_metabarlist(all_data_isolated, "samples" ,all_data_isolated$samples$Year == "2017")
+
+ANCOM_analysis(all_data_isolated_year2)
+```
+
+## Year 3
+
+### ANCOM
+```{r}
+all_data_isolated_year3 <- subset_metabarlist(all_data_isolated, "samples", all_data_isolated$samples$Year == "2018")
+
+ANCOM_analysis(all_data_isolated_year3)
+```
+
+# Connected mesocosms
+
+```{r}
+all_data_connected <- subset_metabarlist(all_data, "samples", all_data$samples$Connectivity_TM1 == "Connected")
+```
+
+## Year1 
+
+```{r}
+all_data_connected_year1 <- subset_metabarlist(all_data_connected, "samples", all_data_connected$samples$Year == "2016")
+
+ANCOM_analysis(all_data_connected_year1)
+```
+
+## Year2
+
+```{r}
+all_data_connected_year2 <- subset_metabarlist(all_data_connected, "samples", all_data_connected$samples$Year == "2017")
+
+ANCOM_analysis(all_data_connected_year2)
+```
+
+## Year3
+```{r}
+all_data_connected_year3 <- subset_metabarlist(all_data_connected, "samples", all_data_connected$samples$Year == "2018")
+
+ANCOM_analysis(all_data_connected_year3)
+```
+
+# Log Fold Changes Distribution
+
+## Data
+```{r}
+setwd("~/results_ANCOM")
+
+files_FoldChange = list.files(pattern="*table_lfc.csv")
+files_FoldChange_list <- lapply(files_FoldChange, read.csv2)
+
+tab_lfc_connected_year1 <- files_FoldChange_list[[1]]
+tab_lfc_connected_year2 <- files_FoldChange_list[[2]]
+tab_lfc_connected_year3 <- files_FoldChange_list[[3]]
+tab_lfc_isolated_year1 <- files_FoldChange_list[[4]]
+tab_lfc_isolated_year2 <- files_FoldChange_list[[5]]
+tab_lfc_isolated_year3 <- files_FoldChange_list[[6]]
+
+tab_lfc_isolated_year3$Year <- "year3"
+tab_lfc_isolated_year2$Year <- "year2"
+tab_lfc_isolated_year1$Year <- "year1"
+
+Tab_fold_isolated <- rbind(tab_lfc_isolated_year1,tab_lfc_isolated_year2, tab_lfc_isolated_year3)
+
+Tab_fold_isolated$Connectivity <- "Isolated"
+
+tab_lfc_connected_year3$Year <- "year3"
+tab_lfc_connected_year2$Year <- "year2"
+tab_lfc_connected_year1$Year <- "year1"
+
+Tab_fold_connect <- rbind(tab_lfc_connected_year1,tab_lfc_connected_year2, tab_lfc_connected_year3)
+
+Tab_fold_connect$Connectivity <- "Connected"
+
+Tab_fold <- rbind(Tab_fold_isolated, Tab_fold_connect)
+```
+
+## Plot
+```{r}
+Fold_Isolated <- ggplot(Tab_fold_isolated, aes(x=Log_Fold_Changes, color=Year, fill=Year)) +
+    geom_density(alpha=0.6) +
+  xlim(-0.85, 0.8) + ylim(0, 6) +
+  labs(y= "Density", x="", title = "A. Isolated") +
+  scale_fill_manual(name = "", labels=c("year1", "year2", "year3"), values=c("#66CC66", "#3366FF","#CC6600")) +
+  scale_color_manual(name = "", labels=c("year1", "year2", "year3"), values=c("#66CC66", "#3366FF", "#CC6600")) +
+  geom_vline(xintercept=0, size=0.5, linetype="dashed") +
+  theme_fig + 
+  theme(legend.position = "bottom", 
+        legend.text = element_text(size=12))
+
+Fold_Connect <- ggplot(Tab_fold_connect, aes(x=Log_Fold_Changes, color=Year, fill=Year)) +
+    geom_density(alpha=0.6) +
+  xlim(-0.85, 0.8) + ylim(0, 6) +
+  labs(y= "Density", x="Log Fold Changes", title = "B. Connected") +
+  scale_fill_manual(name = "", labels=c("year1", "year2", "year3"), values=c("#66CC66", "#3366FF","#CC6600")) +
+  scale_color_manual(name = "", labels=c("year1", "year2", "year3"), values=c("#66CC66", "#3366FF", "#CC6600")) +
+  geom_vline(xintercept=0, size=0.5, linetype="dashed") +
+  theme_fig+ 
+  theme(legend.position = "bottom", 
+        legend.text = element_text(size=12))
+```
+
+```{r}
+Graph <- ggarrange(Fold_Isolated, Fold_Connect, ncol=1, nrow=2, common.legend = TRUE, legend="bottom")
+
+setwd("~/Plots")
+dev.print(jpeg,filename="FoldChange.jpg",quality=100,units="px",width=2500,res=300)
+```

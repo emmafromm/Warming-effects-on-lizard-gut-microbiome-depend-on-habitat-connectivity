@@ -1,0 +1,170 @@
+---
+title: "Gut Composition"
+author: "Emma"
+date: "12/01/2022"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+    theme: united
+    highlight: tango
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = TRUE, 
+                      fig.align = "center", 
+                      fig.width = 8,
+                      fig.height = 6, 
+                      message = FALSE, 
+                      warning = FALSE)
+```
+
+# Libraries
+```{r, message=FALSE}
+library(ggplot2)
+library(metabaR)
+library(vegan)
+```
+
+# Read the data and load functions
+```{r, echo=TRUE}
+setwd("~/data")
+
+all_data <- readRDS("FrommMS1_cleandata.rds")
+all_data_raref <- readRDS("FrommMS1.cleandata_raref.rds")
+
+setwd("~/R")
+source('0_Fromm_sources_functions.R', chdir = TRUE)
+```
+
+# Define functions for analysis
+```{r}
+permanova <- function(x) {
+  helling <- decostand(x$reads, method="hellinger")
+  bray <- vegdist(helling, method="bray")
+  pcoa <- cmdscale(bray, eig=TRUE)
+  
+  d <- data.frame(pcoa$points)
+  d$Climate_TM1 <- x$samples[rownames(d), "Climate_TM1"]
+  d$Age_class <- x$samples[rownames(d), "Age_class"]
+  d$Sex <- x$samples[rownames(d), "Sex"]
+  d$Mesocosm_TM1 <- x$samples[rownames(d), "Mesocosm_TM1"]
+  d$SVL <- x$samples[rownames(d), "SVL"]
+  
+  perm <-  how(nperm = 999)
+  setBlocks(perm) <- with(d, Mesocosm_TM1)
+  
+  mod <- adonis2(bray ~ Climate_TM1 + Age_class + Sex + SVL, data = d, permutation = perm, method = "bray", by="margin")
+  print(mod)
+}
+
+betadisp <- function(x) {
+  helling <- decostand(x$reads, method="hellinger")
+  bray <- vegdist(helling, method="bray")
+  
+  data_enviro <- subset(x$samples, select=c(Climate_TM1, Age_class, Sex, Mesocosm_TM1))
+  data_enviro$Climate_TM1[data_enviro$Climate_TM1 == 'T28'] <- 'Present'
+  data_enviro$Climate_TM1[data_enviro$Climate_TM1 == 'T38'] <- 'Warm'
+  
+  mod_betadisp <- betadisper(bray, data_enviro$Climate_TM1)
+  print(mod_betadisp)
+  print(permutest(mod_betadisp, permutation=999))
+  anova(mod_betadisp)
+}
+```
+
+# Isolated mesocosms
+```{r}
+all_data_raref_isolated <- subset_metabarlist(all_data_raref, table="samples", indices=all_data_raref$samples$Connectivity_TM1 == "Isolated")
+```
+
+## Initial conditions (year0)
+```{r}
+#year0
+all_data_raref_isolated_2015 <- subset_metabarlist(all_data_raref_isolated, table = "samples", indices = all_data_raref_isolated$samples$Year == "2015")
+
+permanova(all_data_raref_isolated_2015)
+betadisp(all_data_raref_isolated_2015)
+```
+
+## Global model 
+```{r}
+all_data_raref_isolated <- subset_metabarlist(all_data_raref_isolated, table = "samples", indices = all_data_raref_isolated$samples$Year != "2015")
+
+permanova(all_data_raref_isolated)
+betadisp(all_data_raref_isolated)
+```
+
+## year1
+```{r}
+all_data_raref_isolated_2016 <- subset_metabarlist(all_data_raref_isolated, table = "samples", indices = all_data_raref_isolated$samples$Year == "2016")
+
+permanova(all_data_raref_isolated_2016)
+betadisp(all_data_raref_isolated_2016)
+```
+
+## year2
+```{r}
+all_data_raref_isolated_2017 <- subset_metabarlist(all_data_raref_isolated, table = "samples", indices = all_data_raref_isolated$samples$Year == "2017")
+
+permanova(all_data_raref_isolated_2017)
+betadisp(all_data_raref_isolated_2017)
+```
+
+## year3
+```{r}
+all_data_raref_isolated_2018 <- subset_metabarlist(all_data_raref_isolated, table = "samples", indices = all_data_raref_isolated$samples$Year == "2018")
+
+permanova(all_data_raref_isolated_2018)
+betadisp(all_data_raref_isolated_2018)
+```
+
+# Connected mesocosms 
+```{r}
+all_data_raref_connected <- subset_metabarlist(all_data_raref, table="samples", indices=all_data_raref$samples$Connectivity_TM1 == "Connected")
+```
+
+## Initial conditions 
+```{r}
+#year0
+all_data_raref_connected_2015 <- subset_metabarlist(all_data_raref_connected, table = "samples", indices = all_data_raref_connected$samples$Year == "2015")
+
+permanova(all_data_raref_connected_2015)
+betadisp(all_data_raref_connected_2015)
+```
+
+## Global model
+```{r}
+all_data_raref_connected <- subset_metabarlist(all_data_raref_connected, table = "samples", indices = all_data_raref_connected$samples$Year != "2015")
+
+permanova(all_data_raref_connected)
+betadisp(all_data_raref_connected)
+```
+
+## year1
+```{r}
+all_data_raref_connected_2016 <- subset_metabarlist(all_data_raref_connected, table = "samples", indices = all_data_raref_connected$samples$Year == "2016")
+
+permanova(all_data_raref_connected_2016)
+betadisp(all_data_raref_connected_2016)
+```
+
+## year2
+```{r}
+all_data_raref_connected_2017 <- subset_metabarlist(all_data_raref_connected, table = "samples", indices = all_data_raref_connected$samples$Year == "2017")
+
+permanova(all_data_raref_connected_2017)
+betadisp(all_data_raref_connected_2017)
+```
+
+##year3
+```{r}
+all_data_raref_connected_2018 <- subset_metabarlist(all_data_raref_connected, table = "samples", indices = all_data_raref_connected$samples$Year == "2018")
+
+permanova(all_data_raref_connected_2018)
+betadisp(all_data_raref_connected_2018)
+```
+
