@@ -1,0 +1,285 @@
+---
+title: "Analyses_plasticite_EF"
+author: "Emma Fromm"
+date: "2022-11-21"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+    theme: united
+    highlight: tango
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      eval = TRUE, 
+                      fig.align = "center", 
+                      fig.width = 8,
+                      fig.height = 6, 
+                      message = FALSE, 
+                      warning = FALSE)
+```
+
+# Libraries
+```{r}
+library(metabaR)
+library(ggplot2)
+library(dplyr)
+library(questionr)
+library(reshape2)
+library(lme4)
+```
+
+# Read the data and load functions
+```{r, echo=TRUE}
+setwd("~/data")
+
+all_data <- readRDS("FrommMS1_cleandata.rds")
+
+data_lizards <- all_data$samples
+
+setwd("~/R")
+source('0_Fromm_sources_functions.R', chdir = TRUE)
+```
+
+# Difference in alpha diversity for lizards found 2 consecutives years
+```{r}
+data_lizards_2rep <- subset(data_lizards, Freq >= 2) # dataframe avec les individus répétés. 
+data_lizards_2rep$ID.seq <- rownames(data_lizards_2rep)
+```
+
+## Isolated mesocoms
+
+```{r}
+shape_data_for_plasticity <- function(data) {
+  first_data <- data
+  data <- subset(data, select = c("ID.seq", "q1", "Year"))
+  data <- rename.variable(data, "ID.seq", "ID1")
+  data$ID2 <- data$ID1
+  
+  data2 <- expand.grid(data$ID1, data$ID2) # data2 = all pairwise combinations
+  data2 <- data2 %>% 
+           rename("ID1" = "Var1",
+           "ID2" = "Var2")
+  
+  data_ID1 <- subset(data, select = c("ID1", "q1", "Year"))
+  data2 <- merge(data2, data_ID1, by="ID1")
+  data2 <- data2 %>% 
+           rename("q1_ID1" = "q1",
+           "Year1" = "Year")
+  
+  data_ID2 <- subset(data, select = c("ID2", "q1", "Year"))
+  data2 <- merge(data2, data_ID2, by="ID2")
+  data2 <- data2 %>% 
+           rename("q1_ID2" = "q1",
+           "Year2" = "Year")
+  
+  #Calculate difference in alpha diversity (year t+1 - year t)
+  data2$diff1 <- ifelse(data2$Year1 == "2015" & data2$Year2 == "2016", 
+                               (data2$q1_ID2 - data2$q1_ID1), 
+                               NA)
+  data2$diff2 <- ifelse(data2$Year1 == "2016" & data2$Year2 == "2015", 
+                               (data2$q1_ID1 - data2$q1_ID2), 
+                               data2$diff1)
+  data2$diff3 <- ifelse(data2$Year1 == "2016" & data2$Year2 == "2017", 
+                               (data2$q1_ID2 - data2$q1_ID1), 
+                               data2$diff2)
+  data2$diff4 <- ifelse(data2$Year1 == "2017" & data2$Year2 == "2016", 
+                               (data2$q1_ID1 - data2$q1_ID2), 
+                               data2$diff3)
+  data2$diff5 <- ifelse(data2$Year1 == "2017" & data2$Year2 == "2018", 
+                               (data2$q1_ID2 - data2$q1_ID1), 
+                               data2$diff4)
+  data2$diff_q1 <- ifelse(data2$Year1 == "2018" & data2$Year2 == "2017", #diff_q1 = difference in alpha diversity 
+                               (data2$q1_ID1 - data2$q1_ID2), 
+                               data2$diff5)
+  
+  matrice_Q1_diff <- acast(data2, ID1 ~ ID2, value.var ="diff_q1") #matrix of diversity difference for all lizards. Lizards compared with themselves or between different years = NA
+  matrice_Q1_diff[upper.tri(matrice_Q1_diff)] <- NA
+  
+  data3 <- reshape2::melt(matrice_Q1_diff, varnames = c("ID1", "ID2")) #Convert distance matrix into data.frame
+  data3 <- data3[complete.cases(data3), ] #Remove NAs
+  
+  #Add variables
+  add_vars <- subset(first_data, select=c("ID.seq", "Code", "Mesocosm_TM1", "Climate_TM1", "Freq", "Year", "Sex", "Age_class"))
+  add_vars <- rename.variable(add_vars, "ID.seq", "ID1")
+  data3 <- merge(data3, add_vars, by=c("ID1"))
+  data3 <- data3 %>% 
+           rename("code1" = "Code",
+           "Mesocosm1" = "Mesocosm_TM1",
+           "Climate1" = "Climate_TM1", 
+           "Year1" = "Year",
+           "Freq1" = "Freq", 
+           "Sex1" = "Sex", 
+           "Age_class1" = "Age_class")
+  
+  add_vars <- rename.variable(add_vars, "ID1", "ID2")
+  data3 <- merge(data3, add_vars, by=c("ID2"))
+  data3 <- data3 %>% 
+           rename("code2" = "Code",
+           "Mesocosm2" = "Mesocosm_TM1",
+           "Climate2" = "Climate_TM1", 
+           "Year2" = "Year",
+           "Freq2" = "Freq", 
+           "Sex2" = "Sex", 
+           "Age_class2" = "Age_class")
+  
+  #keep only code1=code2
+  data3$Keep <- ifelse(data3$code1 == data3$code2, 
+                                      "Keep", 
+                                      "Supp")
+  data3 <- subset(data3, Keep == "Keep")
+  
+  #Compared years
+  data3$year1 <- ifelse(data3$Year1 == 2015 & data3$Year2 == 2016, 
+                               "year0-year1", 
+                               NA)
+  data3$year2 <- ifelse(data3$Year1 == 2016 & data3$Year2 == 2015, 
+                               "year0-year1", 
+                               data3$year1)
+  data3$year3 <- ifelse(data3$Year1 == 2016 & data3$Year2 == 2017, 
+                               "year1-year2", 
+                               data3$year2)
+  data3$year4 <- ifelse(data3$Year1 == 2017 & data3$Year2 == 2016, 
+                               "year1-year2", 
+                               data3$year3)
+  data3$year5 <- ifelse(data3$Year1 == 2017 & data3$Year2 == 2018, 
+                               "year2-year3", 
+                               data3$year4)
+  data3$Compa_year <- ifelse(data3$Year1 == 2018 & data3$Year2 == 2017, 
+                               "year2-year3", 
+                               data3$year5)
+  assign("final_data_plasticity", data3, envir = .GlobalEnv)
+  }
+```
+
+## Isolated mesocosms
+
+### Data
+```{r}
+data_lizards_2rep_isolated <- subset(data_lizards_2rep, Connectivity_TM1 == "Isolated")
+
+shape_data_for_plasticity(data_lizards_2rep_isolated)
+```
+
+### Plot
+```{r}
+Plasticity_isolated <- ggplot(final_data_plasticity, aes(x=Compa_year, y=value, fill = Climate1)) +
+  geom_violin(alpha=0.5,scale="width") +
+  geom_boxplot(outlier.shape = NA, alpha=0.5, width=0.20, position = position_dodge(0.9)) +
+  ylab(expression(''*exp(H)[t+1] - exp(H)[t]*'')) +
+  xlab("") + 
+  ggtitle("A. Isolated") +
+  scale_fill_manual(values=c("#006699", "#CC0000"), labels=c("Present-day", "Warm")) +
+  geom_point(position = position_jitterdodge(), 
+             alpha=0.5, 
+             aes(colour=Climate1)) +
+  scale_color_manual(values=c("#006699", "#CC0000"), labels=c("Present-day", "Warm")) +
+  scale_x_discrete(labels=c("year0 - year1", "year1 - year2", "year2 - year3")) +
+  geom_hline(yintercept=0, size=0.5, linetype="dashed") +
+  theme_fig
+  
+Plasticity_isolated
+```
+
+<!-- Save plot --> 
+```{r, eval=FALSE}
+setwd("~/Plots")
+dev.print(jpeg,filename="plasticity_isolated.jpg",quality=100,units="px",width=2500,res=300)
+```
+
+### Model
+
+```{r, echo=FALSE}
+#center years
+final_data_plasticity$Compa_year2 <- ifelse(final_data_plasticity$Compa_year =="year1-year2", 
+                            1, 
+                            0)
+
+
+final_data_plasticity$Compa_year3 <- ifelse(final_data_plasticity$Compa_year =="year2-year3", 
+                            1, 
+                            0)
+
+# centering with 'scale()'
+final_data_plasticity$Compa_year2c <- center_scale(final_data_plasticity$Compa_year3)
+final_data_plasticity$Compa_year3c <- center_scale(final_data_plasticity$Compa_year3)
+
+final_data_plasticity$Compa_year2c <- as.factor(final_data_plasticity$Compa_year2)
+final_data_plasticity$Compa_year3c <- as.factor(final_data_plasticity$Compa_year3)
+```
+
+```{r, echo=TRUE}
+mod_isolated <- lmer(value ~ Compa_year2c*Climate1 + Compa_year3c*Climate1 + Sex1 + Age_class1 + (1|code1) + (1|Mesocosm1), data = final_data_plasticity)
+
+dredge_function(mod_isolated)
+relative_importance(mod_isolated)
+
+r.squaredGLMM(mod_isolated)
+```
+
+## Connected mesocosms
+
+### Data
+```{r}
+data_lizards_2rep_connected <- subset(data_lizards_2rep, Connectivity_TM1 == "Connected")
+
+#remove dispersers
+data_lizards_2rep_connected <- subset(data_lizards_2rep_connected, !data_lizards_2rep_connected$Annual_dispersal %in% "1")
+
+shape_data_for_plasticity(data_lizards_2rep_connected)
+```
+
+### Plot
+```{r}
+Plasticity_connected <- ggplot(final_data_plasticity, aes(x=Compa_year, y=value, fill = Climate1)) +
+  geom_violin(alpha=0.5, scale="width") +
+  geom_boxplot(outlier.shape = NA, alpha=0.5, width=0.20, position = position_dodge(0.9)) +
+  ylab(expression(''*exp(H)[t+1] - exp(H)[t]*'')) +
+  xlab("") + 
+   ggtitle("B. Connected") +
+  scale_fill_manual(values=c("#006699", "#CC0000"), labels=c("Present", "Warm")) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.3), 
+             alpha=0.5, 
+             aes(colour=Climate1)) +
+  scale_color_manual(values=c("#006699", "#CC0000"), labels=c("Present", "Warm")) +
+  scale_x_discrete(labels=c("year0 - year1", "year1 - year2", "year2 - year3")) +
+  geom_hline(yintercept=0, size=0.5, linetype="dashed") +
+  theme_fig
+
+```
+
+```{r}
+#save plot
+setwd("~/Plots")
+dev.print(jpeg,filename="Plasticity_connected.jpg",quality=100,units="px",width=2500,res=300)
+```
+
+### Model
+```{r}
+final_data_plasticity$Compa_year2 <- ifelse(final_data_plasticity$Compa_year =="2016-2017", 
+                            1, 
+                            0)
+
+
+final_data_plasticity$Compa_year3 <- ifelse(final_data_plasticity$Compa_year =="2017-2018", 
+                            1, 
+                            0)
+
+# apply it
+final_data_plasticity$Compa_year2c <- center_scale(final_data_plasticity$Compa_year2)
+final_data_plasticity$Compa_year3c <- center_scale(final_data_plasticity$Compa_year3)
+```
+
+```{r, echo=TRUE}
+mod_connected <- lmer(value ~ Compa_year2c*Climate1 + Compa_year3c*Climate1 + Age_class1 + Sex1 + (1|code1) + (1|Mesocosm1) + (1|Mesocosm2), data = final_data_plasticity)
+
+dredge_function(mod_connected)
+relative_importance(mod_connected)
+
+r.squaredGLMM(mod_connected)
+```
+
+
