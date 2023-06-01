@@ -78,7 +78,7 @@ Annual_survival
 
 <!-- Save plot --> 
 ```{r, eval=FALSE}
-setwd("~/Documents/These/2015-2018/Final_analysis/ZENODO/Plots")
+setwd("~/Plots")
 ggsave("Annual_survival.pdf", Annual_survival, width = 8, height = 5)
 ```
 
