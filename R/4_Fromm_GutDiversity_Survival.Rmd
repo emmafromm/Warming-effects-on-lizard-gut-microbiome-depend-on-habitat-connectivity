@@ -1,0 +1,160 @@
+---
+title: "Gut Diversity - Survival"
+author: "Emma Fromm"
+date: "07/11/2022"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+    theme: united
+    highlight: tango
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = TRUE, 
+                      fig.align = "center", 
+                      fig.width = 8,
+                      fig.height = 6, 
+                      message = FALSE, 
+                      warning = FALSE)
+```
+
+# Libraries
+```{r}
+library(metabaR)
+library(ggplot2)
+library(questionr)
+library(dplyr)
+library(lme4)
+library(lmerTest)
+```
+
+# Read the data and load functions
+```{r, echo=TRUE}
+setwd("~/data")
+
+all_data <- readRDS("FrommMS1_cleandata.rds")
+
+data_lizards <- all_data$samples
+
+setwd("~/R")
+source('0_Fromm_sources_functions.R', chdir = TRUE)
+```
+
+```{r}
+data_lizards <- subset(data_lizards, data_lizards$Annual_dispersal != "1") # remove dispersers 
+
+data_lizards$Year <- as.factor(data_lizards$Year)
+data_lizards$Annual_survival <- as.factor(data_lizards$Annual_survival)
+
+freq(data_lizards$Climate_T)#2 NA #these are two individuals dead before release but spent the previous year in the Metatron.
+#They cannot be taken into account for this survival analysis.
+
+data_lizards <- data_lizards%>% filter(!is.na(Climate_T))
+```
+
+# Plots
+
+```{r}
+Annual_survival <- ggplot(data_lizards, mapping = aes(x=q1, y=Climate_T, fill=Annual_survival)) +
+  geom_violin(trim = FALSE, alpha=0.3) +
+  geom_point(aes(colour = Annual_survival),
+             position = position_jitterdodge(0.15), 
+             alpha=0.2) +
+  labs(x="exp(H)", y="") + 
+  stat_summary(aes(color=Annual_survival), fun.data=mean_sdl, mult=1,
+                 geom="pointrange", position = position_dodge(0.9), size=0.6) + 
+  scale_fill_manual(name = "", labels = c("Alive", "Dead"), values=c("#009933", "#990000")) +
+  scale_colour_manual(name = "", labels = c("Alive", "Dead"), values=c("#009933", "#990000")) +
+  scale_y_discrete(labels=c("Present-day", "Warm")) +
+  facet_grid(rows = vars(Connectivity_T)) +
+  theme_fig
+
+Annual_survival
+```
+
+<!-- Save plot --> 
+```{r, eval=FALSE}
+setwd("~/Documents/These/2015-2018/Final_analysis/ZENODO/Plots")
+ggsave("Annual_survival.pdf", Annual_survival, width = 8, height = 5)
+```
+
+# Isolated mesocosms
+
+## Data 
+
+We work on 3 times periods :
+
+- year0-year1
+- year1-year2
+- year2-year3
+
+```{r}
+data_lizards <- subset(data_lizards, Year!="2018")
+
+data_lizards_isolated <- subset(data_lizards, Connectivity_TM1 == "Isolated")
+```
+
+## Run model 
+
+We recode and center the year factor (Schielzeth et al. 2010). 
+```{r}
+data_lizards_isolated$year1 <- ifelse(data_lizards_isolated$Year =="2016", 
+                            1, 
+                            0) #tear1-year2
+
+data_lizards_isolated$year2 <- ifelse(data_lizards_isolated$Year =="2017", 
+                            1, 
+                            0) #year2-year3
+
+data_lizards_isolated$year1c <- center_scale(data_lizards_isolated$year1)
+data_lizards_isolated$year2c <- center_scale(data_lizards_isolated$year2)
+```
+
+```{r}
+mod_isolated_surv <- glmer(Annual_survival~ q1*Climate_T + Climate_T*year1c + Climate_T*year2c + q1*year1c + q1*year2c + SVL + Age_class + Sex + (1|Code) + (1|Mesocosm_T), data=data_lizards_isolated, family=binomial(link="logit"))
+
+dredge_function(mod_isolated_surv)
+relative_importance(mod_isolated_surv)
+
+r.squaredGLMM(mod_isolated_surv)
+```
+
+# Connected mesocosms 
+
+## Data
+```{r}
+data_lizards_connected <- subset(data_lizards, Connectivity_TM1 == "Connected")
+```
+
+## Run model
+
+We recode and center the year factor (Schielzeth et al. 2010). 
+```{r}
+data_lizards_connected$year1 <- ifelse(data_lizards_connected$Year =="2016", 
+                            1, 
+                            0) #year1-year2
+
+data_lizards_connected$year2 <- ifelse(data_lizards_connected$Year =="2017", 
+                            1, 
+                            0) #year2-year3
+
+
+# apply it
+data_lizards_connected$year1c <- center_scale(data_lizards_connected$year1)
+data_lizards_connected$year2c <- center_scale(data_lizards_connected$year2)
+```
+
+```{r}
+mod_connected_surv <- glmer(Annual_survival~ q1*Climate_T  + Climate_T*year1c + Climate_T*year2c + q1*year16c + q1*year2c + SVL + Age_class + Sex + (1|Code) + (1|Mesocosm_T), data=data_lizards_connected, family=binomial(link="logit"))
+
+dredge_function(mod_connected_surv)
+relative_importance(mod_connected_surv)
+
+r.squaredGLMM(mod_connected_surv)
+```
+
+
