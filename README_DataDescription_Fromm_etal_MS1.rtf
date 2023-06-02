@@ -1,0 +1,163 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2636
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red38\green38\blue38;\red255\green255\blue255;
+}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c0;\cssrgb\c20000\c20000\c20000;\cssrgb\c100000\c100000\c100000;
+}
+\paperw11900\paperh16840\margl1440\margr1440\vieww18580\viewh13260\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 #02/06/2023\
+#E.Fromm\
+############################################################\
+##                                                        ##\
+##                                                        ##\
+##             DATA DESCRIPTION FOR Fromm_et_al_MS1         ##\
+##                                                        ##\
+##                                                        ##\
+############################################################\
+\
+#The dataset \'ab\'a0FrommMS1_cleandata_rds\'a0\'bb is a metabarlist composed of \
+# A motus dataframe of OTU\'92s characteristics \
+# A reads OTUs abundance matrix \
+# A pcrs dataframe of PCR\'92s characteristics \
+# A samples dataframe composed of sample characteristics\
+\
+############################################################\
+###        COMPOSITION OF THE MOTUS DATAFRAME              ###\
+############################################################\
+\
+#rows: id of the cluster (MOTU)\
+#Colums : the following variables \
+\cf2 \expnd0\expndtw0\kerning0
+	#GC_content: %GC of the MOTU sequence\
+	#ID: ID of the sample in which the MOTU is present. NA for multiple samples\
+	#ali_length: length of the reads pairing alignment. NA due to merge of info after the clustering\
+	#class: id of the cluster (MOTU) center used to aggregate the reads count, is equal to the rownames of the table\
+	#cluster: id of the cluster, is equal to the rownames of the table\
+	#cluster_center: id of the cluster center, is equal to the rownames of the table\
+	#cluster_score: related to the clustering step, no idea what it means, it's from the obitools.\
+	#cluster_weight: abundance of the MOTU BEFORE data cleaning\
+	#count: total abundance of the MOTU\
+	#direction: sense of the read. NA due to merge of info after clustering\
+	#distance: don't remember but it's not useful, related to the bioinfo steps\
+	#experiment: name of the experiment\
+	#forward_match: sequence of the forward priming site\
+	#forward_primer: sequence of the forward primer\
+	#forward_score: score of the priming site match with the primer\
+	#forward_tag: sequence of the forward tag. NA for multiple samples, as each sample has a different tag.\
+	#mode: mode of the read pairing alignment.\
+	#primers: name of the primer pair.\
+	#reverse_match: sequence of the reverse priming site\
+	#reverse_primer: sequence of the reverse primer\
+	#reverse_score: score of the reverse priming site match with the primer\
+	#reverse_tag: sequence of the reverse tag. NA for multiple samples, as each sample has a different tag.\
+	#sampling_date: sampling year. NA for multiple samples after sequence aggregation\
+	#seq_a_deletion:\'a0 deletion on the fwd read\
+	#seq_a_insertion: insertion on the fwd read\
+	#seq_a_mismatch: mismatches on the fwd read\
+	#seq_a: bases only on fwd read\
+	#seq_ab_match: bases on the paired end alignment\
+	#seq_b_deletion: deletion on the rev read\
+	#seq_b_insertion: insertion on the rev read\
+	#seq_b_mismatch: mismatch on the rev read\
+	#seq_b_single: bases only on the rev read\
+	#seq_length: length of the sequence of the MOTU\
+	#seq_length_ori: length of the sequence of the MOTU before tag and primer trimming\
+	#status: don't remember, related to the bioinfo steps.\
+	#Sequence: sequence of the MOTU (most abundant sequence)\
+	#similarity: similarity (%) of the MOTU sequence against its best match in the SILVA database (v132)\
+	#superkingdom_silva: superkingdom name after comparison against the SILVA database (v132)\
+	#kingdom_silva: kindgom name after comparison against the SILVA database (v132)\
+	#phylum_silva: phylum name after comparison against the SILVA database (v132)\
+	#class_silva: class name after comparison against the SILVA database (v132)\
+	#order_silva: order name after comparison against the SILVA database (v132)\
+	#family_silva: family name after comparison against the SILVA database (v132)\
+	#genus_silva: genus name after comparison against the SILVA database (v132)\
+	#lineage_silva: full taxonomic path name after comparison against the SILVA database (v132)\
+	#not_a_fieldopen_contaminant: status as potential field open contaminant (TRUE if not a contaminant)\
+	#not_an_extraction_contaminant: status as potential extraction contaminant (TRUE if not a contaminant)\
+	#not_a_pcr_contaminant: status as potential PCR contaminant (TRUE if not a contaminant)\
+	#not_a_sequencing_contaminant: status as potential sequencing contaminant (TRUE if not a contaminant)\
+	#bias: total info on contaminant status merged\
+\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+\cf0 \kerning1\expnd0\expndtw0 ############################################################\
+###        COMPOSITION OF THE PCRS DATAFRAME              ###\
+############################################################\
+\pard\pardeftab720\sl368\qj\partightenfactor0
+\cf2 \expnd0\expndtw0\kerning0
+#rows: unique numerical index corresponding to each of the 860 lizards in the dataset. \
+#columns: the following variables\
+	#plate_no: id of the PCR plate where the sample was PCR amplified\
+	#plate_col: id of the PCR plate column where the sample was PCR amplified\
+\pard\pardeftab720\li960\fi-480\sl368\qj\partightenfactor0
+\cf2 	#plate_row: id of the PCR plate row where the sample was PCR amplified\
+	#tag_fwd: forward tag used to identify the sample\
+	#tag_rev: reverse tag used to identify the sample\
+	#primer_fwd: forward primer used to identify the sample\
+	#primer_rev: reverse primer used to identify the sample\
+	#sample_id : id of the sample. Should be the same as rownames(reads); rownames(pcrs); rownames(samples)\
+	#id: equivalent of the ID in the sample table\
+	#type: type of the pcr (control or samples). here only samples\
+	#control_typ: type of the control. here only samples, controls were removed\
+	#year: sampling year\
+	#control_closed: nome of the corresponding control close (C_ferme).\
+	#control_open: nome of the corresponding control open (C_ouvert).\
+	#clo_quality: equivalent of the Qualite_Clo \
+	#nb_reads: reads in the pcr\
+	#nb_motus: MOTUs in the pcr\
+	#pcrbias: type of pcr bias. Potential bad pcrs already excluded.\
+	#q1: exp shannon on raw, uncleaned data.\
+	#obitools.reads: reads after bioinformatics step 1 (obitools)\
+	#metabaR.reads:reads after bioinformatics step 2 (metabaR)\
+	#obitools.otus:MOTUs after bioinformatics step 2 (obitools)\
+	#metabaR.otus: MOTUs after bioinformatics step 2 (metabaR)\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+\cf2 \
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+\cf0 \kerning1\expnd0\expndtw0 ############################################################\
+###        COMPOSITION OF THE SAMPLES DATAFRAME              ###\
+############################################################\
+\pard\pardeftab720\sl368\qj\partightenfactor0
+\cf2 \expnd0\expndtw0\kerning0
+\
+#rows: unique numerical index corresponding to each of the 860 lizards in the dataset. \
+#columns: the following variables\
+	#Code: lizard ID\
+	#Sex: F (female) or M (male)\
+\pard\pardeftab720\li960\fi-480\sl368\qj\partightenfactor0
+\cf2 	#Age_class: A (> 2+ year old), S (yearling, 1 to 2 years)\
+	#SVL: \cf3 \cb4 lizard body size (snout-vent length in mm\cf2 \cb1 )\
+	#Year : sampling year\
+	#Climate_T: Climatic treatment of the current year\
+	#Climate_TM1: Climatic treatment in which the lizard spent the year prior to sampling : T28 (Present-day climate) or T38 (Warm climate). For the year0 = Climate_T\
+	#Connectivity_T: Connectivity condition of the current year\
+	#Connectivity_TM1: Connectivity condition in which the lizard spent the year prior to sampling: Isolated or Connected. For the year0 = Connectivity_T\
+	#Mesocosm_T: Mesocosms ID in which the lizard spent the current year\
+	#Mesocosm_TM1: mesocosm ID in which the lizard spent the year prior to sampling.\
+	#Q1: exponential of Shannon index quantifying the diversity of the gut microbiota.\
+	#Q1_firmi: exponential of Shannon index within the Firmicutes\
+	#Q1_bactero: exponential of Shannon index within the Bacteroidetes\
+	#Q1_actino: exponential of Shannon index within the Actinobacteria \
+	#Q1_fuso: exponential of Shannon index within the Fusobacteria\
+	#Q1_alphapro: exponential of Shannon index within the Alphaproteobacteria\
+	#Q1_deltapro: exponential of Shannon index within the Deltaproteobacteria\
+	#Q1_gammapro: exponential of Shannon index within the Gammaproteobacteria\
+	#Abond_rel_firmi: Relative abundance of Firmicutes\
+	#Abond_rel_bactero: Relative abundance of Bacteroidetes\
+	#Abond_rel_actino: Relative abundance of Actinobacteria\
+	#Abond_rel_fuso: Relative abundance of Fusobacteria\
+	#Abond_rel_alphapro: Relative abundance of Alphaproteobacteria\
+	#Abond_rel_deltapro: Relative abundance of Deltaproteobacteria\
+	#Abond_rel_gammapro: Relative abundance of Gammaproteobacteria\
+	#Abond_rel_others: Relative abundance of other taxa\
+	#Annual_survival: survival of the year (1 = survived, 0 = died)\
+	#Annual_dispersal: Dispersal status of the year (1 = dispersers, 0 = residents)\
+	#Annual_dispersal_TM1: Dispersal status of the previous year (1 = dispersers, 0 = residents)\
+	#Freq: number of times the lizard is found during the experiment.\
+\pard\pardeftab720\partightenfactor0
+\cf2 \'a0\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+\cf2 \
+}
