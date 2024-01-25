@@ -1,6 +1,6 @@
 # File : Fromm_MS1_rawdata.tar.gz
 	# - contains R1 and R2 fastq files of raw data
-	# - nb of raw sequencing reads in R1 and R2 files: 5899356 reads each
+	# - nb of raw sequencing reads in R1 and R2 files: 11359947 in total
 # File : Fromm_MS1_ngsfilter_16S_Lez_2015_2018.tsv
 	# - tab-sep text file containing the information to retrieve the sample origin of 
 	#   each sequencing reads. Provided in a format compatible with the use of OBITools.
