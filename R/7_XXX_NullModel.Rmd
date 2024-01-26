@@ -1,6 +1,6 @@
 ---
 title: "Null model"
-author: "Emma Fromm"
+author: "XXX"
 date: "2022-11-18"
 output:
   html_document:
