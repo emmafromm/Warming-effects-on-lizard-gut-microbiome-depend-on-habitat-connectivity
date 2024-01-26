@@ -1,6 +1,6 @@
 ---
 title: 'Gut Diversity'
-author: "Emma Fromm"
+author: "X"
 date: '2023-05-30'
 output:
   html_document:
