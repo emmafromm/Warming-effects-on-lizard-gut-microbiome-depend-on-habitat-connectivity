@@ -1,6 +1,6 @@
 ---
 title: "Gut Composition"
-author: "Emma"
+author: "XXX"
 date: "12/01/2022"
 output:
   html_document:
@@ -33,11 +33,11 @@ library(vegan)
 ```{r, echo=TRUE}
 setwd("~/data")
 
-all_data <- readRDS("FrommMS1_cleandata.rds")
-all_data_raref <- readRDS("FrommMS1.cleandata_raref.rds")
+all_data <- readRDS("XXXMS1_cleandata.rds")
+all_data_raref <- readRDS("XXXMS1.cleandata_raref.rds")
 
 setwd("~/R")
-source('0_Fromm_sources_functions.R', chdir = TRUE)
+source('0_XXX_sources_functions.R', chdir = TRUE)
 ```
 
 # Define functions for analysis
