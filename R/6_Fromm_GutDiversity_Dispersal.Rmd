@@ -1,6 +1,6 @@
 ---
 title: "Gut Diversity - Dispersal"
-author: "Emma Fromm"
+author: "XXX"
 date: "2022-11-17"
 output:
   pdf_document:
@@ -36,12 +36,12 @@ library(lmerTest)
 ```{r, echo=TRUE}
 setwd("~/data")
 
-all_data <- readRDS("FrommMS1_cleandata.rds")
+all_data <- readRDS("XXXMS1_cleandata.rds")
 
 data_lizards <- all_data$samples
 
 setwd("~/R")
-source('0_Fromm_sources_functions.R', chdir = TRUE)
+source('0_XXX_sources_functions.R', chdir = TRUE)
 ```
 
 # Data 
