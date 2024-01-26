@@ -1,7 +1,7 @@
 # FONCTIONS FOR : WARMING EFFECTS ON LIZARD GUT MICROBIOTA DEPENDS ON HABITAT CONNECTIVITY
 
 # finished on 2023-05-30
-# author : Emma Fromm
+# author : XXX
 
 # Dredge function
 
