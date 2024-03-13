@@ -1,6 +1,6 @@
 ---
 title: "Null model"
-author: "XXX"
+author: "Emma Fromm"
 date: "2022-11-18"
 output:
   html_document:
@@ -43,10 +43,10 @@ setwd("~/data")
 results_null <- read.csv("results_nul.csv", header = T, sep = ";", dec = ",")
 
 setwd("~/data")
-all_data <- readRDS("XXXMS1_cleandata.rds")
+all_data <- readRDS("FrommMS1_cleandata.rds")
 
 setwd("~/R")
-source('0_XXX_sources_functions.R', chdir = TRUE)
+source('0_Fromm_sources_functions.R', chdir = TRUE)
 ```
 
 ## Adding variables 
