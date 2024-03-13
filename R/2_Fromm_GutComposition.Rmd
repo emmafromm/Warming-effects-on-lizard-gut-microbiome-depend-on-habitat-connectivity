@@ -1,6 +1,6 @@
 ---
 title: "Gut Composition"
-author: "XX"
+author: "Emma Fromm"
 date: "12/01/2022"
 output:
   html_document:
