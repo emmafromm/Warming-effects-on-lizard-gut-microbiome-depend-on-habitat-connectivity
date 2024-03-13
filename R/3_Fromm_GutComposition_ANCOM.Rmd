@@ -1,6 +1,6 @@
 ---
-title: "ANCOM_X"
-author: "XXX"
+title: "ANCOM"
+author: "Emma Fromm"
 date: "07/11/2022"
 output:
   html_document:
@@ -11,8 +11,6 @@ output:
   pdf_document:
     toc: yes
 ---
-
-Analyses des différences d'abondances relatives entre les traitements chauds et froids pour chaque OTUs.
 
 Refs : Lin & Peddada 2020
 
@@ -41,10 +39,10 @@ library(ggpubr)
 # Read the data and load functions
 ```{r}
 setwd("~/data")
-all_data <- readRDS("XXXMS1_cleandata.rds")
+all_data <- readRDS("FrommMS1_cleandata.rds")
 
 setwd("~/R")
-source('0_XXX_sources_functions.R', chdir = TRUE)
+source('0_Fromm_sources_functions.R', chdir = TRUE)
 
 #Define theme for figures
 theme_fig_ancom <- theme_fig + theme_bw() + (theme(plot.title = element_text(size=15, face="bold")))
