@@ -1,6 +1,6 @@
 ---
 title: "Gut Diversity - Survival"
-author: "XXX"
+author: "Emma Fromm"
 date: "07/11/2022"
 output:
   html_document:
@@ -36,12 +36,12 @@ library(lmerTest)
 ```{r, echo=TRUE}
 setwd("~/data")
 
-all_data <- readRDS("XXXMS1_cleandata.rds")
+all_data <- readRDS("FrommMS1_cleandata.rds")
 
 data_lizards <- all_data$samples
 
 setwd("~/R")
-source('0_XXX_sources_functions.R', chdir = TRUE)
+source('0_Fromm_sources_functions.R', chdir = TRUE)
 ```
 
 ```{r}
