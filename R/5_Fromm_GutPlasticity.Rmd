@@ -1,6 +1,6 @@
 ---
-title: "Analyses_plasticite_X"
-author: "XXX"
+title: "Analyses_plasticite_"
+author: "Emma Fromm"
 date: "2022-11-21"
 output:
   html_document:
@@ -36,12 +36,12 @@ library(lme4)
 ```{r, echo=TRUE}
 setwd("~/data")
 
-all_data <- readRDS("XXXMS1_cleandata.rds")
+all_data <- readRDS("FrommMS1_cleandata.rds")
 
 data_lizards <- all_data$samples
 
 setwd("~/R")
-source('0_XXX_sources_functions.R', chdir = TRUE)
+source('0_Fromm_sources_functions.R', chdir = TRUE)
 ```
 
 # Difference in alpha diversity for lizards found 2 consecutives years
